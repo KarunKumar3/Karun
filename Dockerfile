@@ -1,20 +1,22 @@
-# Use official Node.js LTS image
-FROM node:18-alpine
+# Use Maven to build the app
+FROM maven:3.9.6-eclipse-temurin-17 AS build
 
-# Set working directory
 WORKDIR /app
 
-# Copy package.json and package-lock.json
-COPY package*.json ./
+# Copy pom and source code
+COPY pom.xml .
+COPY src ./src
 
-# Install dependencies
-RUN npm install --production
+# Build the app (creates a .jar file)
+RUN mvn clean package -DskipTests
 
-# Copy rest of the app
-COPY . .
+# Use JDK image to run the built app
+FROM eclipse-temurin:17-jdk
 
-# Expose the port your app runs on (update if not 3000)
-EXPOSE 3000
+WORKDIR /app
 
-# Start the app
-CMD ["npm", "start"]
+# Copy the built .jar from the previous stage
+COPY --from=build /app/target/*.jar app.jar
+
+# Run the jar
+ENTRYPOINT ["java", "-jar", "app.jar"]
